@@ -19,4 +19,10 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    install_requires=[
+        'numpy==1.19.4',
+        'paho-mqtt==1.5.5',
+        'json==2.0.9',
+        'pexpect==4.6.0',
+        'scipy==1.5.3']
 )
