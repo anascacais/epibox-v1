@@ -1,12 +1,43 @@
 Metadata-Version: 2.1
 Name: epibox
-Version: 0.0.1
+Version: 0.0.9
 Summary: EpiBOX: A novel approch to long-term monitoring in Epilepsy
-Home-page: https://github.com/anascacais/EpiBOX
+Home-page: https://github.com/anascacais/epibox
 Author: Ana Sofia Carmo
 Author-email: anascacais@gmail.com
 License: UNKNOWN
-Description: UNKNOWN
+Description: # epibox
+        
+        This package is complementary to the mobile app EpiBOX (available at [EpiBOX](https://github.com/anascacais/rPiInterface)).
+        
+        Designed for use with Raspberry Pi, it acts as an autonomous recording unit - allowing for sensor connectivity and data storage. EpiBOX mobile app provides the user interaface and the near-real time visualization of the data. 
+        
+        Currently, EpiBOX supports BITalino-based equipments allowing for the recording, storage and visualization of up to 12 channels simmultaneously. Nevertheless, this package can be easily integrated with other sensors, as long as a python API is provided!
+        
+        ## Installation
+        
+        Use the package manager [pip](https://pip.pypa.io/en/stable/) to install epibox.
+        
+        ```bash
+        pip install epibox
+        or 
+        pip install --upgrade epibox
+        ```
+        
+        ## Usage
+        
+        ```python
+        from epibox import mqtt_startup
+        
+        # this will initiate the process - which should be continued by the user interface (EpiBOX)
+        mqtt_startup.main() 
+        ```
+        
+        ## License
+        [MIT](https://choosealicense.com/licenses/mit/)
+        
+        ## Contact
+        For any additional information please contact me: anascacais@gmail.com
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License

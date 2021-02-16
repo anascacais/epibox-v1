@@ -27,7 +27,7 @@ def on_message(client, userdata, message):
     message = ast.literal_eval(message)
     
     if message == ['Send MAC Addresses']:
-        with open('/home/pi/Documents/Project/PreEpiSeizures/listMAC.json', 'r') as json_file:
+        with open('/home/pi/Documents/epibox/listMAC.json', 'r') as json_file:
             listMAC = json_file.read()
         
         listMAC = ast.literal_eval(listMAC)
@@ -40,17 +40,18 @@ def on_message(client, userdata, message):
         run(["sudo", "date"], capture_output=True, text=True)
     
     elif message == ['Send drives']:
-        total, _ , free = shutil.disk_usage('/')
-        listDrives = ['DRIVES','RPi ({:.1f}% livre)'.format((free/total)*100)]
+        listDrives = ['DRIVES']
         drives = os.listdir('/media/pi')
         for drive in drives:
             total, _ , free = shutil.disk_usage('/media/pi/{}'.format(drive))
             listDrives += ['{} ({:.1f}% livre)'.format(drive, (free/total)*100)]
+        total, _ , free = shutil.disk_usage('/')
+        listDrives += ['RPi ({:.1f}% livre)'.format((free/total)*100)]
         #listDrives = ['DRIVES','Armazenamento interno'] + drives
         client.publish(topic='rpi', payload="{}".format(listDrives))
         
     elif message == ['Send config']:
-        with open('/home/pi/Documents/Project/PreEpiSeizures/config_default.json', 'r') as json_file:
+        with open('/home/pi/Documents/epibox/config_default.json', 'r') as json_file:
             defaults = json_file.read()
         defaults = ast.literal_eval(defaults)
         drive = defaults['initial_dir']
@@ -84,7 +85,7 @@ def main():
     
     else:
         client.loop_stop()
-        run(['python3', '/home/pi/Documents/Project/PreEpiSeizures/mqtt_devices.py'])
+        run(['python3', '/home/pi/.local/lib/python3.7/site-packages/epibox/mqtt_devices.py'])
         
     
 

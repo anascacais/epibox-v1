@@ -21,7 +21,7 @@ def on_message(client, userdata, message):
     ######## Device selection ########
     if message[0] == 'NEW MAC': #set new default
         listMAC = message[1]
-        with open('/home/pi/Documents/Project/PreEpiSeizures/listMAC.json', 'w') as json_file:
+        with open('/home/pi/Documents/epibox/listMAC.json', 'w') as json_file:
             json.dump(listMAC, json_file)
             
     elif message[0] == 'USE MAC': 
@@ -38,7 +38,7 @@ def on_message(client, userdata, message):
         
     elif message[0] == 'RESTART':
         client.loop_stop()
-        run(['python3', '/home/pi/Documents/Project/PreEpiSeizures/mqtt_startup.py'])
+        run(['python3', '/home/pi/.local/lib/python3.7/site-packages/epibox/mqtt_startup.py'])
                 
     ####### Configurations ########
     elif message[0] == 'FOLDER':
@@ -67,7 +67,7 @@ def on_message(client, userdata, message):
         config = message[1]
         defaults = {'initial_dir': config[0], 'fs': config[1], 'channels': config[2]}
         #defaults = {'initial_dir': config[0], 'fs': config[1], 'channels': config[2], 'sensors': config[3]}
-        with open('/home/pi/Documents/Project/PreEpiSeizures/config_default.json', 'w') as json_file:
+        with open('/home/pi/Documents/epibox/config_default.json', 'w') as json_file:
             json.dump(defaults, json_file)
         
         
@@ -84,7 +84,7 @@ def main():
 #     with open('/home/pi/Documents/Project/PreEpiSeizures/args.json', 'w') as json_file:
 #         json.dump(arguments, json_file)
 
-    with open('/home/pi/Documents/Project/PreEpiSeizures/config_default.json', 'r') as json_file:
+    with open('/home/pi/Documents/epibox/config_default.json', 'r') as json_file:
         arguments = json_file.read()   
     arguments = ast.literal_eval(arguments)
     
@@ -114,9 +114,9 @@ def main():
         for i in range(0,len(sys.argv),2):
             arguments[sys.argv[i]] = sys.argv[i+1]
         
-        with open('/home/pi/Documents/Project/PreEpiSeizures/args.json', 'w') as json_file:
+        with open('/home/pi/Documents/epibox/args.json', 'w') as json_file:
             json.dump(arguments, json_file)
-        run(['python3', '-i', '/home/pi/Documents/Project/PreEpiSeizures/PreEpiSeizures.py'])
+        run(['python3', '-i', '/home/pi/.local/lib/python3.7/site-packages/epibox/PreEpiSeizures.py'])
     
     
 if __name__ == '__main__':

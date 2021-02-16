@@ -14,10 +14,9 @@ __license__ = "GPL"
 __version__ = "v3"
 __email__ = "bitalino@plux.info"
 
-
+#built-in
 import platform
 import math
-import numpy
 import re
 import socket
 import serial
@@ -25,6 +24,12 @@ import struct
 import time
 import select
 import sys
+
+#local
+
+#3rd-party
+import numpy
+
 
 def find():
     """

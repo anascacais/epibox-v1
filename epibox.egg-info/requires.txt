@@ -1,0 +1,6 @@
+numpy==1.19.4
+paho-mqtt==1.5.1
+pexpect==4.6.0
+scipy==1.5.3
+bitalino==1.2.1
+PyBluez==0.23

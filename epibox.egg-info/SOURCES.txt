@@ -37,4 +37,5 @@ epibox/write_file.py
 epibox.egg-info/PKG-INFO
 epibox.egg-info/SOURCES.txt
 epibox.egg-info/dependency_links.txt
+epibox.egg-info/requires.txt
 epibox.egg-info/top_level.txt
