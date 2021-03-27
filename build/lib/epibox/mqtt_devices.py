@@ -43,7 +43,7 @@ def on_message(client, userdata, message):
     ####### Configurations ########
     elif message[0] == 'FOLDER':
         if message[1] == 'RPi':
-            folder = 'home/pi/Documents/Project/PreEpiSeizures/acquisitions'
+            folder = '/home/pi/Documents/epibox/acquisitions'
         else: 
             folder = '/media/pi/' + message[1] + '/acquisitions'
         sys.argv += ['initial_dir', folder]

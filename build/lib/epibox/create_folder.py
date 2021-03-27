@@ -3,6 +3,7 @@ import os
 def create_folder(initial_dir, nb):
 
     directory = os.path.join(initial_dir, nb)
+    directory = os.path.join(directory, 'Bitalino')
     
     if not os.path.exists(directory):
         os.makedirs(directory)

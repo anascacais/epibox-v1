@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: epibox
-Version: 0.0.9
+Version: 0.0.10
 Summary: EpiBOX: A novel approch to long-term monitoring in Epilepsy
 Home-page: https://github.com/anascacais/epibox
 Author: Ana Sofia Carmo
@@ -38,6 +38,7 @@ Description: # epibox
         
         ## Contact
         For any additional information please contact me: anascacais@gmail.com
+        
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License

@@ -61,400 +61,413 @@ def on_message(client, userdata, message):
 
 def main():
     
-    call(['rfkill', 'block', 'bluetooth'])
-    call(['rfkill', 'unblock', 'bluetooth'])
+    try:
     
-    with open('/home/pi/Documents/epibox/args.json', 'r') as json_file:
-        opt = json_file.read()
-    opt = ast.literal_eval(opt)
-    
-    client_name = random_str(6)
-    print('Client name (acquisition):', client_name)
-    host_name = '192.168.0.10'
-    topic = 'rpi'
-    
-    client = mqtt.Client(client_name)
-    setattr(client, 'keepAlive', True)
-    client.username_pw_set(username='preepiseizures', password='preepiseizures')
-    client.connect(host_name)
-    client.subscribe(topic)
-    client.on_message = on_message
-    client.loop_start()
-    print('Successfully subcribed to topic', topic)
-    init = False
-    client.publish('rpi', "['STARTING']")
-    
-    if not opt['channels']:
-        channels = []
-        for device in opt['devices_mac']:
-            for i in range(1,7):
-                channels += [[device,str(i)]]
-        sensors = ['-' for i in range(len(channels))]
-    
-    else:
-        channels = []
-        sensors = []
-        for triplet in opt['channels']:
-            channels += [triplet[:2]] 
-            sensors += [triplet[2]]
-    
-    global write_annot
-    global new_annot
-    global pause_acq
-    write_annot = False
-    pause_acq = False
-    already_notified_pause = False
-    
-    print('ID: {}'.format(opt['patient_id']))
-    print('folder: {}'.format(opt['initial_dir']))
-    print('fs: {}'.format(opt['fs']))
-    print('channels: {}'.format(channels))
-    print('devices: {}'.format(opt['devices_mac']))
-    print('sensors: {}'.format(sensors))
-    
-
-    # pair BITalino devices if not already ===============================================================
-    
-    paired_devices = run(['bluetoothctl', 'paired-devices'], capture_output=True, text=True).stdout.split('\n')
-    paired = [mac in [p.split()[1] for p in paired_devices[:-1]] for mac in opt['devices_mac']]
-    
-    if not all(paired):
-        client.publish('rpi', "['PAIRING']")
+        call(['rfkill', 'block', 'bluetooth'])
+        call(['rfkill', 'unblock', 'bluetooth'])
         
-    already_timed_out = False
-    init_connect_time = time.time()
+        with open('/home/pi/Documents/epibox/args.json', 'r') as json_file:
+            opt = json_file.read()
+        opt = ast.literal_eval(opt)
+        
+        client_name = random_str(6)
+        print('Client name (acquisition):', client_name)
+        host_name = '192.168.0.10'
+        topic = 'rpi'
+        
+        client = mqtt.Client(client_name)
+        setattr(client, 'keepAlive', True)
+        client.username_pw_set(username='preepiseizures', password='preepiseizures')
+        client.connect(host_name)
+        client.subscribe(topic)
+        client.on_message = on_message
+        client.loop_start()
+        print('Successfully subcribed to topic', topic)
+        init = False
+        client.publish('rpi', "['STARTING']")
+        
+        if not opt['channels']:
+            channels = []
+            for device in opt['devices_mac']:
+                for i in range(1,7):
+                    channels += [[device,str(i)]]
+            sensors = ['-' for i in range(len(channels))]
+        
+        else:
+            channels = []
+            sensors = []
+            for triplet in opt['channels']:
+                channels += [triplet[:2]] 
+                sensors += [triplet[2]]
+        
+        global write_annot
+        global new_annot
+        global pause_acq
+        write_annot = False
+        pause_acq = False
+        already_notified_pause = False
+        
+        print('ID: {}'.format(opt['patient_id']))
+        print('folder: {}'.format(opt['initial_dir']))
+        print('fs: {}'.format(opt['fs']))
+        print('channels: {}'.format(channels))
+        print('devices: {}'.format(opt['devices_mac']))
+        print('sensors: {}'.format(sensors))
+        
     
-    while not all(paired):
+        # pair BITalino devices if not already ===============================================================
         
-        if (time.time() - init_connect_time) > 120 or client.keepAlive == False:
-            client.publish('rpi', "['STOPPED']")
-            client.loop_stop()
-            print('TIMEOUT')
-            # Disconnect the system
-            disconnect_system(devices, a_file, annot_file, drift_log_file)
-            client.keepAlive = False
-            pass
+        paired_devices = run(['bluetoothctl', 'paired-devices'], capture_output=True, text=True).stdout.split('\n')
+        paired = [mac in [p.split()[1] for p in paired_devices[:-1]] for mac in opt['devices_mac']]
         
-
-        if already_timed_out == True and time.time() - init_connect_time > 10:
-            already_timed_out = False
-                
-        for imac,mac in enumerate(opt['devices_mac']):
+        if not all(paired):
+            client.publish('rpi', "['PAIRING']")
             
-            if not paired[imac]:
-                print('Trying to pair {}'.format(mac))
+        already_timed_out = False
+        init_connect_time = time.time()
+        
+        while not all(paired):
+            
+            if (time.time() - init_connect_time) > 120 or client.keepAlive == False:
+                client.publish('rpi', "['STOPPED']")
+                client.loop_stop()
+                print('TIMEOUT')
+                # Disconnect the system
+                disconnect_system(devices, a_file, annot_file, drift_log_file)
+                client.keepAlive = False
+                pass
+            
+    
+            if already_timed_out == True and time.time() - init_connect_time > 10:
+                already_timed_out = False
+                    
+            for imac,mac in enumerate(opt['devices_mac']):
+                
+                if not paired[imac]:
+                    print('Trying to pair {}'.format(mac))
+                    try:
+                        child = pexpect.spawn('bluetoothctl')
+                        child.expect('#')
+                        child.sendline('default agent')
+                        child.expect('#')
+                        child.sendline('scan on')
+                        child.expect('#')
+                        child.sendline('pair {}'.format(mac))
+                        child.expect('Enter PIN code: ')
+                        child.sendline('1234')
+                        
+                        print('Successfully paired {}!'.format(mac))
+                        paired[imac] = True
+                        
+                    except Exception as e:
+                        print(e)
+                        if already_timed_out == False and time.time() - init_connect_time > 10:
+                            timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
+                            client.publish('rpi', timeout_json)
+                            print('SENT TIMEOUT')
+                            already_timed_out = True
+                            init_connect_time = time.time()
+    
+    
+        # Use/create the patient folder =============================================================== 
+        directory = create_folder(opt['initial_dir'], 'patient_{}'.format(opt['patient_id']))
+        already_timed_out = False   
+    
+        
+        #*********** Connection to BITalino devices ***********#
+        devices = []
+        for i, mac in enumerate(opt['devices_mac']):
+        
+            init_connect_time = time.time()
+            print('Searching for Module...' + mac)
+            
+            while client.keepAlive == True:
+    
+                if (time.time() - init_connect_time) > 120:
+                    client.publish('rpi', "['STOPPED']")
+                    client.loop_stop()
+                    print('TIMEOUT')
+                    # Disconnect the system
+                    disconnect_system(devices, a_file, annot_file, drift_log_file)
+                    client.keepAlive == False
+                    pass
+                
                 try:
-                    child = pexpect.spawn('bluetoothctl')
-                    child.expect('#')
-                    child.sendline('default agent')
-                    child.expect('#')
-                    child.sendline('scan on')
-                    child.expect('#')
-                    child.sendline('pair {}'.format(mac))
-                    child.expect('Enter PIN code: ')
-                    child.sendline('1234')
+                    if already_timed_out == True and time.time() - init_connect_time > 10:
+                        already_timed_out = False
                     
-                    print('Successfully paired {}!'.format(mac))
-                    paired[imac] = True
-                    
+                    bt_devices = getoutput('hcitool con')
+                    print(bt_devices)
+                    print(devices)
+                    if mac not in bt_devices.split():
+                        device = BITalino(mac, timeout=5)
+                        print('Device {} connected!'.format(mac))
+                        devices.append(device)
+                    elif mac not in [d.macAddress for d in devices]:
+                        print('Already connected, but not in devices'.format(mac))
+                        device = BITalino(mac, timeout=5)
+                        devices.append(device)
+                        print('Device {} connected!'.format(mac))
+                    else:
+                        print('Already connected | devices: {}'.format(devices))
+                        
+                    break
+    
                 except Exception as e:
                     print(e)
+                    print('Failed at connecting to BITalino')
                     if already_timed_out == False and time.time() - init_connect_time > 10:
                         timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
                         client.publish('rpi', timeout_json)
                         print('SENT TIMEOUT')
                         already_timed_out = True
                         init_connect_time = time.time()
-
-
-    # Use/create the patient folder =============================================================== 
-    directory = create_folder(opt['initial_dir'], 'patient_{}'.format(opt['patient_id']))
-    already_timed_out = False   
-
-    
-    #*********** Connection to BITalino devices ***********#
-    devices = []
-    for i, mac in enumerate(opt['devices_mac']):
-    
-        init_connect_time = time.time()
-        print('Searching for Module...' + mac)
-        
-        while client.keepAlive == True:
-
-            if (time.time() - init_connect_time) > 120:
-                client.publish('rpi', "['STOPPED']")
-                client.loop_stop()
-                print('TIMEOUT')
-                # Disconnect the system
-                disconnect_system(devices, a_file, annot_file, drift_log_file)
-                client.keepAlive == False
-                pass
             
-            try:
-                if already_timed_out == True and time.time() - init_connect_time > 10:
-                    already_timed_out = False
+        
+        print('Devices in list: {}'.format([d.macAddress for d in devices]))
+        
+        try:
+            a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
+        
+        except Exception as e:
+            print(e)
+            client.publish('rpi', "['ERROR']")
+            client.loop_stop()
+            
+            # Disconnect the system
+            # disconnect_system(devices, a_file, annot_file, drift_log_file)
+            print('Acquisition could not start. Turn devices off and on. Then restart.')
+            pid = run(['sudo', 'pgrep', 'python'], capture_output=True, text=True).stdout.split('\n')[:-1]
+            for p in pid:
+                run(['kill', '-9', p])
+    
+        
+        #*********** ****************************** ***********#
+        
+        battery = {}
+        for device in devices:
+            state = device.state()
+            if state['battery'] > 63:
+                battery_volts = 2 * ((state['battery']*3.3) / (2**10-1))
+            else:
+                battery_volts = 2 * ((state['battery']*3.3) / (2**6-1))
                 
-                bt_devices = getoutput('hcitool con')
-                print(bt_devices)
-                print(devices)
-                if mac not in bt_devices.split():
-                    device = BITalino(mac, timeout=5)
-                    print('Device {} connected!'.format(mac))
-                    devices.append(device)
-                elif mac not in [d.macAddress for d in devices]:
-                    print('Already connected, but not in devices'.format(mac))
-                    device = BITalino(mac, timeout=5)
-                    devices.append(device)
-                    print('Device {} connected!'.format(mac))
-                else:
-                    print('Already connected | devices: {}'.format(devices))
+            battery[device.macAddress] = battery_volts
+        battery_json = json.dumps(['BATTERY', battery])
+        
+        client.publish('rpi', battery_json)
+            
+        
+        
+        # Starting Acquisition LOOP =========================================================================
+        try:
+            while client.keepAlive == True:
+                
+                if pause_acq and not already_notified_pause:
                     
-                break
-
-            except Exception as e:
-                print(e)
-                print('Failed at connecting to BITalino')
-                if already_timed_out == False and time.time() - init_connect_time > 10:
-                    timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
-                    client.publish('rpi', timeout_json)
-                    print('SENT TIMEOUT')
-                    already_timed_out = True
-                    init_connect_time = time.time()
-        
-    
-    print('Devices in list: {}'.format([d.macAddress for d in devices]))
-    
-    try:
-        a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
-    
-    except Exception as e:
-        print(e)
-        client.publish('rpi', "['ERROR']")
-        client.loop_stop()
-        
-        # Disconnect the system
-        # disconnect_system(devices, a_file, annot_file, drift_log_file)
-        print('Acquisition could not start. Turn devices off and on. Then restart.')
-        pid = run(['sudo', 'pgrep', 'python'], capture_output=True, text=True).stdout.split('\n')[:-1]
-        for p in pid:
-            run(['kill', '-9', p])
-
-    
-    #*********** ****************************** ***********#
-    
-    battery = {}
-    for device in devices:
-        state = device.state()
-        if state['battery'] > 63:
-            battery_volts = 2 * ((state['battery']*3.3) / (2**10-1))
-        else:
-            battery_volts = 2 * ((state['battery']*3.3) / (2**6-1))
-            
-        battery[device.macAddress] = battery_volts
-    battery_json = json.dumps(['BATTERY', battery])
-    
-    client.publish('rpi', battery_json)
-        
-    
-    
-    # Starting Acquisition LOOP =========================================================================
-    try:
-        while client.keepAlive == True:
-            
-            if pause_acq and not already_notified_pause:
+                    for i,device in enumerate(devices):
+                        try:
+                            device.stop()
+                        except:
+                            continue
+                        
+                    client.publish('rpi', "['PAUSED']")
+                    already_notified_pause = True
                 
-                for i,device in enumerate(devices):
+                
+                elif not pause_acq:
+                    
+                    already_notified_pause = False
+                    
                     try:
-                        device.stop()
-                    except:
-                        continue
-                    
-                client.publish('rpi', "['PAUSED']")
-                already_notified_pause = True
-            
-            
-            elif not pause_acq:
-                
-                already_notified_pause = False
-                
-                try:
-                    state = devices[0].state() # verify if it needs to be restarted
-                    
-                    _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, resolution)
-                    client.publish('rpi', "['ACQUISITION ON']")
-
-                    # if phisiological signal downsample to 100Hz, if acc decimate 10Hz
-                    t_display = []
-                    if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
-                        for i in range(t_disp.shape[1]):
-                            t_display += [signal.decimate(t_disp[:,i], 10).tolist()]
-                    else:
-                        for i in range(t_disp.shape[1]):
-                            t_display += [t_disp[:,i].tolist()]  
-                                
-                    json_data = json.dumps(['DATA', t_display, channels, sensors])
-                    client.publish('rpi', json_data)
-                    already_timed_out = False
-                    
-                except Exception as e:
-                    print(e)
-                    pass
-                
-                # Acquisition LOOP =========================================================================
-                # try to read from the device--------------------------------------------------------------------------------------------------
-                
-                if write_annot:
-                    print('SAVED ANNOT')
-                    write_annot_file(annot_file, new_annot)
-                    write_annot = False
-                            
-            
-                try:
-                    _, t_disp, a_file, drift_log_file, sync_param = run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, channels, sensors, opt['fs'], save_fmt, resolution)
-                    
-                    t_display = []
-                    if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
-                        for i in range(t_disp.shape[1]):
-                            t_display += [signal.decimate(t_disp[:,i], 10).tolist()]
-                    else:
-                        for i in range(t_disp.shape[1]):
-                            t_display += [t_disp[:,i].tolist()]  
-                                
-                    json_data = json.dumps(['DATA', t_display, channels, sensors])
-                    client.publish('rpi', json_data)
-                    already_timed_out = False
-                    
-                # Handle misconnection of the devices--------------------------------------------------------------------------------------------
-                except Exception as e:
-                    print('')
-                    print('')
-                    print('The system has stopped running because ' + str(e) + '! Please check Modules!')
-                    print('Trying to Reconnect....')
-                    client.publish('rpi', "['RECONNECTING']")
-                    
-                    # Disconnect the system
-                    disconnect_system(devices, a_file, annot_file, drift_log_file)
-            
-                    # Reconnect the devices
-                    try:
-                        #*********** Connection to BITalino devices ***********#
-                        call(['rfkill', 'block', 'bluetooth'])
-                        call(['rfkill', 'unblock', 'bluetooth'])
-                        devices = []
-                        for i, mac in enumerate(opt['devices_mac']):
-                        
-                            init_connect_time = time.time()
-                            print('Searching for Module...' + mac)
-                            
-                            while client.keepAlive == True:
-
-                                if (time.time() - init_connect_time) > 120:
-                                    client.publish('rpi', "['STOPPED']")
-                                    client.loop_stop()
-                                    print('TIMEOUT')
-                                    # Disconnect the system
-                                    disconnect_system(devices, a_file, annot_file, drift_log_file)
-                                    client.keepAlive == False
-                                    pass
-                                
-                                try:
-                                    if already_timed_out == True and time.time() - init_connect_time > 10:
-                                        already_timed_out = False
-                                    
-                                    bt_devices = getoutput('hcitool con')
-                                    print(bt_devices)
-                                    print(devices)
-                                    if mac not in bt_devices.split():
-                                        device = BITalino(mac, timeout=5)
-                                        print('Device {} connected!'.format(mac))
-                                        devices.append(device)
-                                    elif mac not in [d.macAddress for d in devices]:
-                                        print('Already connected, but not in devices'.format(mac))
-                                        device = BITalino(mac, timeout=5)
-                                        devices.append(device)
-                                        print('Device {} connected!'.format(mac))
-                                    else:
-                                        print('Already connected | devices: {}'.format(devices))
-                                        
-                                    break
-
-                                except Exception as e:
-                                    print(e)
-                                    print('Failed at connecting to BITalino')
-                                    if already_timed_out == False and time.time() - init_connect_time > 10:
-                                        timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
-                                        client.publish('rpi', timeout_json)
-                                        print('SENT TIMEOUT')
-                                        already_timed_out = True
-                                        init_connect_time = time.time()
-                        
-                        print('Devices in list: {}'.format([d.macAddress for d in devices]))
-                        
-                        a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
-                    
-                    # Acquisition LOOP =========================================================================
-                            
-                        for device in devices:
-                            state = device.state()
-                            if state['battery'] > 63:
-                                battery_volts = 2 * ((state['battery']*3.3) / (2**10-1))
-                            else:
-                                battery_volts = 2 * ((state['battery']*3.3) / (2**6-1))
-                                
-                            battery[device.macAddress] = battery_volts
-                        battery_json = json.dumps(['BATTERY', battery])
-                        
-                        client.publish('rpi', battery_json)
+                        state = devices[0].state() # verify if it needs to be restarted
                         
                         _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, resolution)
-                        print('The system is running again ...')
                         client.publish('rpi', "['ACQUISITION ON']")
-                        
+    
+                        # if phisiological signal downsample to 100Hz, if acc decimate 10Hz
                         t_display = []
                         if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
                             for i in range(t_disp.shape[1]):
-                                t_display += [signal.decimate(t_disp[:,i], n).tolist()]
+                                t_display += [signal.decimate(t_disp[:,i], 10).tolist()]
                         else:
                             for i in range(t_disp.shape[1]):
-                                t_display += [t_disp[:,i].tolist()]
+                                t_display += [t_disp[:,i].tolist()]  
                                     
                         json_data = json.dumps(['DATA', t_display, channels, sensors])
                         client.publish('rpi', json_data)
                         already_timed_out = False
                         
-                    except:
+                    except Exception as e:
+                        print(e)
                         pass
+                    
+                    # Acquisition LOOP =========================================================================
+                    # try to read from the device--------------------------------------------------------------------------------------------------
+                    
+                    if write_annot:
+                        print('SAVED ANNOT')
+                        write_annot_file(annot_file, new_annot)
+                        write_annot = False
+                                
+                
+                    try:
+                        _, t_disp, a_file, drift_log_file, sync_param = run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, channels, sensors, opt['fs'], save_fmt, resolution)
+                        
+                        t_display = []
+                        if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
+                            for i in range(t_disp.shape[1]):
+                                t_display += [signal.decimate(t_disp[:,i], 10).tolist()]
+                        else:
+                            for i in range(t_disp.shape[1]):
+                                t_display += [t_disp[:,i].tolist()]  
+                                    
+                        json_data = json.dumps(['DATA', t_display, channels, sensors])
+                        client.publish('rpi', json_data)
+                        already_timed_out = False
+                        
+                    # Handle misconnection of the devices--------------------------------------------------------------------------------------------
+                    except Exception as e:
+                        print('')
+                        print('')
+                        print('The system has stopped running because ' + str(e) + '! Please check Modules!')
+                        print('Trying to Reconnect....')
+                        client.publish('rpi', "['RECONNECTING']")
+                        
+                        # Disconnect the system
+                        disconnect_system(devices, a_file, annot_file, drift_log_file)
+                
+                        # Reconnect the devices
+                        try:
+                            #*********** Connection to BITalino devices ***********#
+                            call(['rfkill', 'block', 'bluetooth'])
+                            call(['rfkill', 'unblock', 'bluetooth'])
+                            devices = []
+                            for i, mac in enumerate(opt['devices_mac']):
+                            
+                                init_connect_time = time.time()
+                                print('Searching for Module...' + mac)
+                                
+                                while client.keepAlive == True:
+    
+                                    if (time.time() - init_connect_time) > 120:
+                                        client.publish('rpi', "['STOPPED']")
+                                        client.loop_stop()
+                                        print('TIMEOUT')
+                                        # Disconnect the system
+                                        disconnect_system(devices, a_file, annot_file, drift_log_file)
+                                        client.keepAlive == False
+                                        pass
+                                    
+                                    try:
+                                        if already_timed_out == True and time.time() - init_connect_time > 10:
+                                            already_timed_out = False
+                                        
+                                        bt_devices = getoutput('hcitool con')
+                                        print(bt_devices)
+                                        print(devices)
+                                        if mac not in bt_devices.split():
+                                            device = BITalino(mac, timeout=5)
+                                            print('Device {} connected!'.format(mac))
+                                            devices.append(device)
+                                        elif mac not in [d.macAddress for d in devices]:
+                                            print('Already connected, but not in devices'.format(mac))
+                                            device = BITalino(mac, timeout=5)
+                                            devices.append(device)
+                                            print('Device {} connected!'.format(mac))
+                                        else:
+                                            print('Already connected | devices: {}'.format(devices))
+                                            
+                                        break
+    
+                                    except Exception as e:
+                                        print(e)
+                                        print('Failed at connecting to BITalino')
+                                        if already_timed_out == False and time.time() - init_connect_time > 10:
+                                            timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
+                                            client.publish('rpi', timeout_json)
+                                            print('SENT TIMEOUT')
+                                            already_timed_out = True
+                                            init_connect_time = time.time()
+                            
+                            print('Devices in list: {}'.format([d.macAddress for d in devices]))
+                            
+                            a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
+                        
+                        # Acquisition LOOP =========================================================================
+                                
+                            for device in devices:
+                                state = device.state()
+                                if state['battery'] > 63:
+                                    battery_volts = 2 * ((state['battery']*3.3) / (2**10-1))
+                                else:
+                                    battery_volts = 2 * ((state['battery']*3.3) / (2**6-1))
+                                    
+                                battery[device.macAddress] = battery_volts
+                            battery_json = json.dumps(['BATTERY', battery])
+                            
+                            client.publish('rpi', battery_json)
+                            
+                            _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, resolution)
+                            print('The system is running again ...')
+                            client.publish('rpi', "['ACQUISITION ON']")
+                            
+                            t_display = []
+                            if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
+                                for i in range(t_disp.shape[1]):
+                                    t_display += [signal.decimate(t_disp[:,i], n).tolist()]
+                            else:
+                                for i in range(t_disp.shape[1]):
+                                    t_display += [t_disp[:,i].tolist()]
+                                        
+                            json_data = json.dumps(['DATA', t_display, channels, sensors])
+                            client.publish('rpi', json_data)
+                            already_timed_out = False
+                            
+                        except:
+                            pass
+            
+                else:
+                    pass
+            
+        except KeyboardInterrupt:
+            print('')
+            print('You have stopped the acquistion. Saving all the files ...')
+            client.publish('rpi', "['STOPPED']")
+            client.loop_stop()
+            
+            # Disconnect the system
+            disconnect_system(devices, a_file, annot_file, drift_log_file)
+            client.keepAlive == False
+            pass
+    
+            
+        	# -----------------------------------------------------------------------------------------------------------------------------------------
         
-            else:
-                pass
-        
-    except KeyboardInterrupt:
         print('')
-        print('You have stopped the acquistion. Saving all the files ...')
         client.publish('rpi', "['STOPPED']")
         client.loop_stop()
         
         # Disconnect the system
         disconnect_system(devices, a_file, annot_file, drift_log_file)
-        client.keepAlive == False
-        pass
-
+        print('You have stopped the acquistion. Saving all the files ...')
+        time.sleep(3)
+        pid = run(['sudo', 'pgrep', 'python'], capture_output=True, text=True).stdout.split('\n')[:-1]
+        for p in pid:
+            run(['kill', '-9', p])
         
-    	# -----------------------------------------------------------------------------------------------------------------------------------------
-    
-    print('')
-    client.publish('rpi', "['STOPPED']")
-    client.loop_stop()
-    
-    # Disconnect the system
-    disconnect_system(devices, a_file, annot_file, drift_log_file)
-    print('You have stopped the acquistion. Saving all the files ...')
-    time.sleep(3)
-    pid = run(['sudo', 'pgrep', 'python'], capture_output=True, text=True).stdout.split('\n')[:-1]
-    for p in pid:
-        run(['kill', '-9', p])
+    except Exception as e:
+        print(e)
+        client.publish('rpi', "['STOPPED']")
+        client.loop_stop()
         
-    
+        # Disconnect the system
+        disconnect_system(devices, a_file, annot_file, drift_log_file)
+        print('You have stopped the acquistion. Saving all the files ...')
+        time.sleep(3)
+        pid = run(['sudo', 'pgrep', 'python'], capture_output=True, text=True).stdout.split('\n')[:-1]
+        for p in pid:
+            run(['kill', '-9', p])
     
     # =========================================================================================================
 
