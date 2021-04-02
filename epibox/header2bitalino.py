@@ -1,6 +1,6 @@
 
 
-def header2bitalino(filename, file_time, file_date, devices, mac_channels, sensors, fs):
+def header2bitalino(filename, file_time, file_date, devices, mac_channels, sensors, fs, saveRaw):
     
     filename.write('# OpenSignals Text File Format' + '\n')
     
@@ -16,12 +16,18 @@ def header2bitalino(filename, file_time, file_date, devices, mac_channels, senso
         mac_dict[device.macAddress]['sensor'] = []
         for i,elem in enumerate(mac_channels):
             if elem[0]==device.macAddress:
-                if sensors[i] in ['PPG','SpO2', 'ACC', '-']:
-                    mac_dict[device.macAddress]['sensor'] += ['RAW']
+                mac_dict[device.macAddress]['sensor'] += [sensors[i]]
+                if saveRaw:
                     fmt += ['%i']
                 else:
-                    mac_dict[device.macAddress]['sensor'] += [sensors[i]]
                     fmt += ['%.2f']
+                
+#                 if sensors[i] in ['PPG','SpO2', 'ACC', '-']:
+#                     mac_dict[device.macAddress]['sensor'] += ['RAW']
+#                     fmt += ['%i']
+#                 else:
+#                     mac_dict[device.macAddress]['sensor'] += [sensors[i]]
+#                     fmt += ['%.2f']
         
         mac_dict[device.macAddress]['device name'] = 'Device '+str(n_device+1) 
         
@@ -52,22 +58,24 @@ def header2bitalino(filename, file_time, file_date, devices, mac_channels, senso
         
         mac_dict[device.macAddress]['sampling rate'] = fs
         
-        mac_dict[device.macAddress]['label'] = [sensors[i] for i,elem in enumerate(mac_channels) if elem[0]==device.macAddress]
+        if saveRaw:
+            mac_dict[device.macAddress]['label'] = ['RAW' for i,elem in enumerate(mac_channels) if elem[0]==device.macAddress]
+        else:
+            mac_dict[device.macAddress]['label'] = [sensors[i] for i,elem in enumerate(mac_channels) if elem[0]==device.macAddress]
         
         aux = [10, 10, 10, 10, 6, 6]
         aux2 = [1 for elem in mac_channels if elem[0]==device.macAddress]
         mac_dict[device.macAddress]['resolution'] = [4] + [aux[i] for i in range(len(aux2))]
         resolution[device.macAddress] = mac_dict[device.macAddress]['resolution']
-        
-        #mac_dict[device.macAddress]['special'] = [{}, {}, {}, {}, {}, {}] #???
-    
+
+    header = {'resolution': resolution, 'saveRaw': saveRaw}
     
     print("# " + str(mac_dict) + '\n')
     filename.write("# " + str(mac_dict) + '\n')
     #filename.write('# {"20:16:07:18:16:69": {"sensor": ["RAW", "RAW", "RAW", "RAW", "RAW", "RAW"], "device name": "Device 1", "column": ["nSeq", "I1", "I2", "O1", "O2", "A1", "A2", "A3", "A4", "A5", "A6"], "sync interval": 2, "time": ' + file_time+', "comments": "", "device connection": "20:16:07:18:16:69", "channels": [1, 2, 3, 4, 5, 6], "date": '+file_date+', "mode": 0, "digital IO": [0, 0, 0, 0, 1, 1, 1, 1], "firmware version": "5.1", "device": "bitalino_rev", "position": 0, "sampling rate": 1000, "label": ["EDA", "BVP", "EMG", "Acc X", "Acc Y", "Acc Z"], "resolution": [4, 1, 1, 1, 1, 10, 10, 10, 10, 6, 6], "special": [{}, {}, {}, {}, {}, {}]}, "20:16:07:18:14:11": {"sensor": ["RAW", "RAW", "RAW", "RAW", "RAW", "RAW"], "device name": "Device 2", "column": ["nSeq", "I1", "I2", "O1", "O2", "A1", "A2", "A3", "A4", "A5", "A6"], "sync interval": 2, "time": ' + file_time + ', "comments": "", "device connection": "20:16:07:18:14:11", "channels": [1, 2, 3, 4, 5, 6], "date": ' + file_date + ', "mode": 0, "digital IO": [0, 0, 0, 0, 1, 1, 1, 1], "firmware version": "5.1", "device": "bitalino_rev", "position": 1, "sampling rate": 1000, "label": ["EOG", "ECG", "PZT", "Acc X", "Acc Y", "Acc Z"], "resolution": [4, 1, 1, 1, 1, 10, 10, 10, 10, 6, 6], "special": [{}, {}, {}, {}, {}, {}]}}' +'\n')
     filename.write('# EndOfHeader' + '\n')
     
-    return tuple(fmt), resolution
+    return tuple(fmt), header
 
 
 

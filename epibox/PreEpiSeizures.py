@@ -22,6 +22,7 @@ import numpy as np
 from subprocess import run, getoutput, call
 import os
 from scipy import signal
+import time
 
 def random_str(length):
     letters = string.ascii_letters
@@ -100,6 +101,9 @@ def main():
                 channels += [triplet[:2]] 
                 sensors += [triplet[2]]
         
+        saveRaw = bool(opt['saveRaw'])
+        service = opt['service']
+        
         global write_annot
         global new_annot
         global pause_acq
@@ -110,6 +114,7 @@ def main():
         print('ID: {}'.format(opt['patient_id']))
         print('folder: {}'.format(opt['initial_dir']))
         print('fs: {}'.format(opt['fs']))
+        print('saveRaw: {}'.format(saveRaw))
         print('channels: {}'.format(channels))
         print('devices: {}'.format(opt['devices_mac']))
         print('sensors: {}'.format(sensors))
@@ -170,7 +175,7 @@ def main():
     
     
         # Use/create the patient folder =============================================================== 
-        directory = create_folder(opt['initial_dir'], 'patient_{}'.format(opt['patient_id']))
+        directory = create_folder(opt['initial_dir'], '{}'.format(opt['patient_id']), service)
         already_timed_out = False   
     
         
@@ -227,7 +232,7 @@ def main():
         print('Devices in list: {}'.format([d.macAddress for d in devices]))
         
         try:
-            a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
+            a_file, annot_file, drift_log_file, save_fmt, header = open_file(directory, devices, channels, sensors, opt['fs'], saveRaw)
         
         except Exception as e:
             print(e)
@@ -265,24 +270,28 @@ def main():
                 
                 if pause_acq and not already_notified_pause:
                     
+                    sync_param['mode'] = 0
+                    
                     for i,device in enumerate(devices):
                         try:
                             device.stop()
-                        except:
+                        except Exception as e:
+                            print(e)
                             continue
-                        
+                     
                     client.publish('rpi', "['PAUSED']")
                     already_notified_pause = True
                 
-                
+                    #time.sleep(2)
+                    
                 elif not pause_acq:
                     
                     already_notified_pause = False
                     
                     try:
-                        state = devices[0].state() # verify if it needs to be restarted
+                        #state = devices[0].state() # verify if it needs to be restarted
                         
-                        _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, resolution)
+                        _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, header)
                         client.publish('rpi', "['ACQUISITION ON']")
     
                         # if phisiological signal downsample to 100Hz, if acc decimate 10Hz
@@ -299,6 +308,7 @@ def main():
                         already_timed_out = False
                         
                     except Exception as e:
+                        #sync_param['mode'] = 0
                         print(e)
                         pass
                     
@@ -312,7 +322,7 @@ def main():
                                 
                 
                     try:
-                        _, t_disp, a_file, drift_log_file, sync_param = run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, channels, sensors, opt['fs'], save_fmt, resolution)
+                        _, t_disp, a_file, drift_log_file, sync_param = run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, channels, sensors, opt['fs'], save_fmt, header)
                         
                         t_display = []
                         if opt['fs'] == 1000:# changes sampling rate to 100 (if larger)
@@ -336,7 +346,8 @@ def main():
                         
                         # Disconnect the system
                         disconnect_system(devices, a_file, annot_file, drift_log_file)
-                
+                        sync_param['mode'] = 0
+                        
                         # Reconnect the devices
                         try:
                             #*********** Connection to BITalino devices ***********#
@@ -354,6 +365,7 @@ def main():
                                         client.publish('rpi', "['STOPPED']")
                                         client.loop_stop()
                                         print('TIMEOUT')
+                                        
                                         # Disconnect the system
                                         disconnect_system(devices, a_file, annot_file, drift_log_file)
                                         client.keepAlive == False
@@ -383,6 +395,7 @@ def main():
                                     except Exception as e:
                                         print(e)
                                         print('Failed at connecting to BITalino')
+                                        sync_param['mode'] = 0
                                         if already_timed_out == False and time.time() - init_connect_time > 10:
                                             timeout_json = json.dumps(['TIMEOUT', '{}'.format(mac)])
                                             client.publish('rpi', timeout_json)
@@ -392,9 +405,9 @@ def main():
                             
                             print('Devices in list: {}'.format([d.macAddress for d in devices]))
                             
-                            a_file, annot_file, drift_log_file, save_fmt, resolution = open_file(directory, devices, channels, sensors, opt['fs'])
+                            a_file, annot_file, drift_log_file, save_fmt, header = open_file(directory, devices, channels, sensors, opt['fs'], saveRaw)
                         
-                        # Acquisition LOOP =========================================================================
+                            # Acquisition LOOP =========================================================================
                                 
                             for device in devices:
                                 state = device.state()
@@ -408,7 +421,7 @@ def main():
                             
                             client.publish('rpi', battery_json)
                             
-                            _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, resolution)
+                            _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, header)
                             print('The system is running again ...')
                             client.publish('rpi', "['ACQUISITION ON']")
                             

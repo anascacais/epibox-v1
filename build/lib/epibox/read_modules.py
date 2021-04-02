@@ -1,7 +1,7 @@
 import numpy as np
 from copy import copy
 
-def read_modules(devices, mac_channels, sensors, resolution):
+def read_modules(devices, mac_channels, sensors, header):
     
     t = np.array([])
     t_display = np.array([])
@@ -19,8 +19,12 @@ def read_modules(devices, mac_channels, sensors, resolution):
             
             if chn[0] == device.macAddress:
                 
-                signal_type = sensors[j]
-                r = resolution[device.macAddress][n+1]
+                if header['saveRaw']:
+                    signal_type = 'RAW'
+                else:
+                    signal_type = sensors[j]
+                    
+                r = header['resolution'][device.macAddress][n+1]
                 
                 t_aux = get_transform(t_nseq[:,n], signal_type, r) # receives and returns a column with 100 samples
                     

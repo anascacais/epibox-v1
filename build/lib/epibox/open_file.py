@@ -4,7 +4,7 @@ from header2bitalino import *
 import os
 #import h5py
 
-def open_file(directory, devices, mac_channels, sensors, fs):
+def open_file(directory, devices, mac_channels, sensors, fs, saveRaw):
 
     # for txt format
     save_time = time.strftime("%Y-%m-%d %H-%M-%S", time.gmtime())
@@ -25,9 +25,9 @@ def open_file(directory, devices, mac_channels, sensors, fs):
     
     a_file = open(os.path.join(directory, 'A' + save_time + '.txt'), 'w') #data file
     
-    save_fmt, resolution = header2bitalino(a_file, file_time, file_date, devices, mac_channels, sensors, fs)
+    save_fmt, header = header2bitalino(a_file, file_time, file_date, devices, mac_channels, sensors, fs, saveRaw)
 
     drift_log_file = open(os.path.join(directory, 'drift_log_file_'+ save_time +'.txt'), 'w')
 
 
-    return a_file, annot_file, drift_log_file, save_fmt, resolution
+    return a_file, annot_file, drift_log_file, save_fmt, header

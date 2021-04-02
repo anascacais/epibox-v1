@@ -12,7 +12,7 @@ import sys
 import socket
 
 
-def run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, mac_channels, sensors, fs, save_fmt, resolution):
+def run_system(devices, a_file, annot_file, drift_log_file, sync_param, directory, mac_channels, sensors, fs, save_fmt, header):
 	
     if time.time()-sync_param['strtime'] > 5:
         sync_param['dig_Out'] = sync_bitalino(sync_param['dig_Out'], devices[0])
@@ -28,7 +28,7 @@ def run_system(devices, a_file, annot_file, drift_log_file, sync_param, director
     
     now = datetime.now()
     sync_param['sync_time'] = now.strftime("%Y-%m-%d %H:%M:%S.%f")
-    t, t_str, t_display = read_modules(devices, mac_channels, sensors, resolution)
+    t, t_str, t_display = read_modules(devices, mac_channels, sensors, header)
 
     
     # Open new file each hour

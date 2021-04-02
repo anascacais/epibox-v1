@@ -51,6 +51,15 @@ def on_message(client, userdata, message):
     elif message[0] == 'FS':
         fs = message[1]
         sys.argv += ['fs', fs]
+    
+    elif message[0] == 'SAVE RAW':
+        saveRaw = message[1]
+        sys.argv += ['saveRaw', saveRaw]
+        
+    elif message[0] == 'EPI SERVICE':
+        global epi_service
+        epi_service = message[1]
+        sys.argv += ['service', epi_service]
         
     elif message[0] == 'CHANNELS':
         channels = message[1]
@@ -65,7 +74,7 @@ def on_message(client, userdata, message):
         
     elif message[0] == 'NEW CONFIG DEFAULT':
         config = message[1]
-        defaults = {'initial_dir': config[0], 'fs': config[1], 'channels': config[2]}
+        defaults = {'initial_dir': config[0], 'fs': config[1], 'channels': config[2], 'saveRaw': config[3]}
         #defaults = {'initial_dir': config[0], 'fs': config[1], 'channels': config[2], 'sensors': config[3]}
         with open('/home/pi/Documents/epibox/config_default.json', 'w') as json_file:
             json.dump(defaults, json_file)
@@ -89,12 +98,12 @@ def main():
     arguments = ast.literal_eval(arguments)
     
     sys.argv = []
+    global epi_service
+    epi_service = 'Bitalino'
     
     client_name = random_str(6)
     print('Client name (devices):', client_name)
     host_name = '192.168.0.10'
-    #host_name = 'test.mosquitto.org'
-    #host_name = run(["hostname", "-I"], capture_output=True, text=True).stdout.split(" ")[0]
     topic = 'rpi'
     
     client = mqtt.Client(client_name)
@@ -111,12 +120,16 @@ def main():
     
     else:
         client.loop_stop()
-        for i in range(0,len(sys.argv),2):
+        for i in range(0, len(sys.argv), 2):
             arguments[sys.argv[i]] = sys.argv[i+1]
         
         with open('/home/pi/Documents/epibox/args.json', 'w') as json_file:
             json.dump(arguments, json_file)
-        run(['python3', '-i', '/home/pi/.local/lib/python3.7/site-packages/epibox/PreEpiSeizures.py'])
+        
+        if epi_service == 'Bitalino':
+            run(['python3', '-i', '/home/pi/.local/lib/python3.7/site-packages/epibox/PreEpiSeizures.py'])
+        else: # epi_service == 'sense'
+            run(['python3', '-i', '/home/pi/.local/lib/python3.7/site-packages/epibox/sense.py'])
     
     
 if __name__ == '__main__':

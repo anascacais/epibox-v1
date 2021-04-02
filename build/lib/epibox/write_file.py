@@ -7,7 +7,8 @@ def write_file(t, a_file, drift_log_file, sync_param, time, fmt):
 #         sync_param['save_log'] = 0
     
     write_acq_file(a_file, t, time, fmt)
-    # line added to see if it fixes drift_log_file
+    
     write_drift_log(drift_log_file, sync_param)
+        
     print('save_log: {}'.format(sync_param['save_log']))
     

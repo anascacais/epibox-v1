@@ -18,11 +18,16 @@ epibox/header2bitalino.py
 epibox/mqtt_devices.py
 epibox/mqtt_startup.py
 epibox/open_file.py
+epibox/open_file_sense.py
 epibox/python.py
 epibox/read_modules.py
+epibox/read_modules_sense.py
 epibox/refresh.py
 epibox/run_system.py
+epibox/scientisst.py
+epibox/sense.py
 epibox/start_system.py
+epibox/start_system_sense.py
 epibox/startup.py
 epibox/str2np.py
 epibox/sync_bitalino.py
