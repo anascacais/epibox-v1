@@ -57,6 +57,13 @@ def on_message(client, userdata, message):
         global write_annot
         new_annot = message[1]
         write_annot = True
+        
+    elif message[0] == 'TURN OFF':
+        print('TURNING OFF RPI')
+        client.publish(topic='rpi', payload=str(['TURNED OFF']))
+    
+    elif message[0] == 'TURNED OFF':
+        run(['sudo', 'shutdown', '-h', 'now'])
 
 #****************************** MAIN SCRIPT ***********************************
 
@@ -282,14 +289,14 @@ def main():
                     client.publish('rpi', "['PAUSED']")
                     already_notified_pause = True
                 
-                    #time.sleep(2)
+                    
                     
                 elif not pause_acq:
                     
                     already_notified_pause = False
                     
                     try:
-                        #state = devices[0].state() # verify if it needs to be restarted
+
                         
                         _, t_disp, sync_param = start_system(devices, a_file, drift_log_file, opt['fs'], channels, sensors, save_fmt, header)
                         client.publish('rpi', "['ACQUISITION ON']")

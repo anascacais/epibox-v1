@@ -56,6 +56,13 @@ def on_message(client, userdata, message):
         global write_annot
         new_annot = message[1]
         write_annot = True
+        
+    elif message[0] == 'TURN OFF':
+        print('TURNING OFF RPI')
+        client.publish(topic='rpi', payload=str(['TURNED OFF']))
+    
+    elif message[0] == 'TURNED OFF':
+        run(['sudo', 'shutdown', '-h', 'now'])
 
 #****************************** MAIN SCRIPT ***********************************
 
@@ -256,6 +263,8 @@ def main():
                     if time.time()-sync_param['inittime'] > 60*60:
                          print('1 hour has passed - closing and initiating another round')
                          process.communicate(input=b'\n')
+                         run(['sudo', 'truncate', '-s0', '/var/log/daemon.log'])
+                         run(['sudo', 'truncate', '-s0', '/var/log/syslog'])
                          break 
         
             print('')

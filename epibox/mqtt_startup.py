@@ -62,6 +62,13 @@ def on_message(client, userdata, message):
     elif message == ['GO TO DEVICES']:
         client.keepAlive = False
         
+    elif message[0] == 'TURN OFF':
+        print('TURNING OFF RPI')
+        client.publish(topic='rpi', payload=str(['TURNED OFF']))
+    
+    elif message[0] == 'TURNED OFF':
+        run(['sudo', 'shutdown', '-h', 'now'])
+        
 
 def main():
     
