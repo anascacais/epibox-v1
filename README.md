@@ -1,6 +1,6 @@
 # epibox
 
-This package is complementary to the mobile app EpiBOX (available at [EpiBOX-app](https://github.com/anascacais/rPiInterface)).
+This package is complementary to the mobile app EpiBOX (available at [EpiBOX-app](https://github.com/anascacais/epibox_app)).
 
 Designed for use with Raspberry Pi, it acts as an autonomous recording unit - allowing for sensor connectivity and data storage. EpiBOX mobile app provides the user interaface and the near-real time visualization of the data. 
 
